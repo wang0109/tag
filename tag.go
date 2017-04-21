@@ -24,8 +24,13 @@ func check(e error) {
 var (
 	red           = color.RedString
 	blue          = color.BlueString
-	pathRe        = regexp.MustCompile(`^(?:\x1b\[[^m]+m)?([^\x1b]+).*`)
-	lineNumberRe  = regexp.MustCompile(`^(?:\x1b\[[^m]+m)?(\d+)(?:\x1b\[0m\x1b\[K)?:.*`)
+	// pathRe        = regexp.MustCompile(`^(?:\x1b\[[^m]+m)?([ -~]+).*`)
+	pathRe        = regexp.MustCompile(`^(?:\x1b\[m\x1b\[35m)?([^\x1b]+).*`)
+	// lineNumberRe  = regexp.MustCompile(`^(?:\x1b\[[^m]+m)?(\d+)(?:\x1b\[0m\x1b\[K)?:.*`)
+  lineNumberRe  = regexp.MustCompile(`^(?:\x1b\[m\x1b\[32m)?(\d+)(?:\x1b\[m)?:.*`)
+
+  // [m[35msrc/main/scala/com/adcolony/amp/models/GetSegmentsResp.scala[m
+
 	cleanFilename = regexp.MustCompile(`([ \(\)\[\]\<\>])`)
 )
 
@@ -124,7 +129,7 @@ func scanLinesAndNulls(data []byte, atEOF bool) (advance int, token []byte, err 
 
 func generateTags(cmd *exec.Cmd) int {
 	color.NoColor = (optionIndex(cmd.Args, "--nocolor") > 0)
-	cmd.Args = append(cmd.Args, "--null")
+	// cmd.Args = append(cmd.Args, "--null")
 
 	stdout, err := cmd.StdoutPipe()
 	check(err)
@@ -148,18 +153,22 @@ func generateTags(cmd *exec.Cmd) int {
 
 	for scanner.Scan() {
 		line = scanner.Bytes()
+    // fmt.Println("line here: [" + string(line) + "]")
 		if groupIdxs = lineNumberRe.FindSubmatchIndex(line); len(groupIdxs) > 0 {
+			// fmt.Println("match 1..")
 			// Extract and tagged match
 			aliasFile.WriteAlias(aliasIndex, curPath, string(line[groupIdxs[2]:groupIdxs[3]]))
 			fmt.Printf("%s %s\n", tagPrefix(aliasIndex), string(line))
 			aliasIndex++
 		} else if groupIdxs = pathRe.FindSubmatchIndex(line); len(groupIdxs) > 0 {
+			// fmt.Println("match 2..")
 			// Extract and print path
 			curPath = string(line[groupIdxs[2]:groupIdxs[3]])
 			curPath, err = filepath.Abs(curPath)
 			check(err)
 			fmt.Println(string(line[:groupIdxs[1]]))
 		} else {
+			// fmt.Println("NO match ")
 			fmt.Println(string(line))
 		}
 	}
@@ -199,7 +208,9 @@ func main() {
 	case len(os.Args) == 1:
 		noTag = true
 	default:
-		tagArgs = []string{"--group", "--color"}
+		tagArgs = []string{"--heading", "-n", "--color", "always"}
+		// tagArgs = []string{"--heading", "-n"}
+		// tagArgs = []string{"--group", "--color"}
 	}
 
 	/* From ag src/options.c:
@@ -212,11 +223,15 @@ func main() {
 		args = append(tagArgs, args...)
 	}
 
-	cmd := exec.Command("ag", args...)
+	// cmd := exec.Command("ag", args...)
+	cmd := exec.Command("rg", args...)
 	cmd.Stderr = os.Stderr
+	// fmt.Println("args\n")
+	// fmt.Println(args)
 
 	if noTag || !isatty(os.Stdin) || !isatty(os.Stdout) {
 		// Data being piped from stdin
+		// fmt.Println("no stuff\n")
 		os.Exit(passThrough(cmd))
 	}
 

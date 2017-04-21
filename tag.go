@@ -49,7 +49,7 @@ func NewAliasFile() *AliasFile {
 
 	aliasCmdFmtString := os.Getenv("TAG_CMD_FMT_STRING")
 	if len(aliasCmdFmtString) == 0 {
-		aliasCmdFmtString = "vim {{.Filename}} +{{.LineNumber}}"
+		aliasCmdFmtString = "vim {{.Filename}} +{{.LineNumber}} -S <(echo \"execute '\"'\"'normal! zz'\"'\"'\")"
 	}
 
 	a := &AliasFile{
